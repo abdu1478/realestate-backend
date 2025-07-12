@@ -23,7 +23,11 @@ const limiter = rateLimit({
 // Middleware
 app.use(limiter);
 app.use(compression({ level: 6, threshold: "5kb" }));
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || process.env.APP_VERCEL_URL || "http://localhost:5173",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true,
+}));
 app.use(express.json());
 
 // Static file caching
