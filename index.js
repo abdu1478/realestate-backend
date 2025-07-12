@@ -23,11 +23,7 @@ const limiter = rateLimit({
 // Middleware
 app.use(limiter);
 app.use(compression({ level: 6, threshold: "5kb" }));
-app.use(cors({
-  origin:"*",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true,
-}));
+app.use(cors());
 app.use(express.json());
 
 // Static file caching
