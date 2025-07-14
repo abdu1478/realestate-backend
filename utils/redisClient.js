@@ -13,8 +13,8 @@ if (!global.redis) {
     connectTimeout: 5000,
   });
 
-  redis.on("connect", () => console.log("🔌 Redis connected"));
-  redis.on("error", (err) => console.error("❌ Redis error:", err));
+  redis.on("connect", () => console.log("Redis connected"));
+  redis.on("error", (err) => console.error("Redis error:", err));
 
   global.redis = redis; 
 } else {
