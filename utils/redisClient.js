@@ -1,6 +1,6 @@
-const { createClient } = require("redis");
+const { default: Redis } = require("ioredis");
 
-const redis = createClient({ url: "redis://localhost:6379" });
+const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
 
 redis.on("error", (err) => {
   console.error("Redis error:", err);
