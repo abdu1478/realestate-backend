@@ -355,7 +355,7 @@ router.get("/properties/featured", async (req, res, next) => {
 
     const data = await Property.find().limit(4);
 
-    await redis.set(cacheKey, JSON.stringify(data), {EX: 400});
+    await redis.set(cacheKey, JSON.stringify(data), "EX", 400);
 
 
     res.set("Cache-Control", "public, max-age=300").json(data);
@@ -376,7 +376,7 @@ router.get("/agents", async (req, res, next) => {
 
     const data = await Agent.find().limit(5);
 
-    await redis.set(cacheKey, JSON.stringify(data), {EX: 400});
+    await redis.set(cacheKey, JSON.stringify(data), "EX", 400);
     res.set("Cache-Control", "public, max-age=300").json(data);
   } catch (error) {
     next(error);
@@ -393,8 +393,8 @@ router.get("/testimonials", async (req, res, next) => {
       return;
     }
     const data = await Testimonial.find().limit(3);
-    
-    await redis.set(cacheKey, JSON.stringify(data), {EX: 400});
+
+    await redis.set(cacheKey, JSON.stringify(data), "EX", 400);
 
     res.set("Cache-Control", "public, max-age=300").json(data);
   } catch (error) {
@@ -405,11 +405,21 @@ router.get("/testimonials", async (req, res, next) => {
 router.get("/properties/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    const cacheKey = `property:${id}`;
+    const cached = await redis.get(cacheKey);
+
+    if(cached) {
+      res.status(200).set("Cache-Control", "public, max-age=300").json(JSON.parse(cached));
+      return;
+    }
     const property = await Property.findById(id);
     if (!property) {
       res.status(404).json({ message: "Property not found" });
       return;
     }
+
+    await redis.set(cacheKey, JSON.stringify(property), "EX", 400);
     res.status(200).set("Cache-Control", "public, max-age=300").json(property);
   } catch (error) {
     next(error);
@@ -432,7 +442,7 @@ router.get("/agents/:id", async (req, res, next) => {
       return;
     }
 
-    await redis.set(cacheKey, JSON.stringify(agent), {EX: 600});
+    await redis.set(cacheKey, JSON.stringify(agent), "EX", 600);
     
     res.json(agent);
   } catch (error) {
