@@ -23,6 +23,7 @@ const PropertySchema = new Schema({
     default: "Available",
   },
   propertyType: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
 });
 
 // Agent Schema
@@ -67,7 +68,30 @@ const UserSchema = new Schema({
     enum: ["user", "admin"],
     default: "user"
   },
+  favourites: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Property",
+      default: [],
+    },
+  ],
   refreshToken: { type: String, select: false }
+});
+
+// User message Schema
+const UserMessageSchema = new Schema({
+  fullName: { type: String, required: true },
+  email: { type: String, required: true },
+  phone: { type: String, required: true },
+  message: { type: String, required: true },
+  subject: {type: String, required: true},
+  status: { type: String, default: "New" },
+  sourcePage: {type: String, default: "Contact Us Page"},
+  propertyId: { type: mongoose.Schema.Types.ObjectId, ref: "Property" }, 
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, 
+  createdAt: { type: Date, default: Date.now },
+  ipAddress: { type: String },
+  userAgent: { type: String }
 });
 
 // User Schema Hooks and Methods
@@ -87,11 +111,13 @@ const Property = mongoose.model("Property", PropertySchema);
 const Agent = mongoose.model("Agent", AgentSchema);
 const Testimonial = mongoose.model("Testimonial", TestimonialSchema);
 const User = mongoose.model("User", UserSchema);
+const UserMessage = mongoose.model("UserMessage", UserMessageSchema);
 
 // Export models
 module.exports = {
   Property,
   Agent,
   Testimonial,
-  User
+  User,
+  UserMessage,
 };
