@@ -5,6 +5,7 @@ const { User } = require("../models/model");
 exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
+    console.log(`Login attempt for email: ${email}`);
     const user = await User.findOne({ email }).select("+password");
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ message: "Invalid credentials" });
@@ -15,9 +16,11 @@ exports.login = async (req, res, next) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      sameSite: "Strict",
+      sameSite: "None",
+      secure: true,
     });
     res.status(200).json({ message: "Login successful" });
+    console.log(`User ${user.email} logged in successfully`);
   } catch (err) {
     next(err);
   }
