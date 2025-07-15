@@ -64,6 +64,8 @@ exports.removeFavourite = async (req, res, next) => {
       const { userId, propertyId } = req.params;
       const cacheKey = `user:${userId}:favourites`;
 
+      console.log("Request body:", req.body);
+
       if (req.user.id.toString() !== userId) {
         return res
           .status(403)
