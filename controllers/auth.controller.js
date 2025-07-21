@@ -43,8 +43,15 @@ exports.register = async (req, res, next) => {
       }
 }
  exports.getMe = async (req, res, next) => {
-    const user = await User.findById(req.user.id).select("-password");
-      res.json(user);
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+      const user = await User.findById(req.user.id).select("-password");
+        res.json(user);
+  }catch (error) {
+    next(error);
+  }
 }
  exports.logout = async (req, res, next) => {
      res.clearCookie("token");

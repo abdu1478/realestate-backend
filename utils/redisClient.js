@@ -1,5 +1,6 @@
 const Redis = require("ioredis");
 require("dotenv").config();
+// const redisURL = process.env.REDIS_URL || "http://localhost:6379/"
 
 if (!global.redis) {
   if (!process.env.REDIS_URL) {

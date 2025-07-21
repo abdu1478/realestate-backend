@@ -1,14 +1,15 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const cors = require("cors");
-const dotenv = require("dotenv");
+const cors = require("cors"); 
 const path = require("path");
 const compression = require("compression");
 const rateLimit = require("express-rate-limit");
 const cookieParser = require("cookie-parser");
 const connectDB = require("./config/db");
+const dotenv = require("dotenv");
 
-dotenv.config();
+
+dotenv.config({ path: '.env' });
 
 connectDB()
 
@@ -27,7 +28,7 @@ app.use(cors({
 
 app.use(cookieParser());
 app.use(express.json());
-app.use(compression({ level: 6, threshold: "5kb" }));
+// app.use(compression({ level: 6, threshold: "5kb" }));
 
 // === Rate Limiting ===
 app.use(rateLimit({
@@ -56,11 +57,13 @@ app.use((req, res, next) => {
   next();
 });
 
+
 // === API Routes ===
 app.use("/api", require("./routes/auth.routes"));
 app.use("/api", require("./routes/user.routes"));
 app.use("/api", require("./routes/property.routes"));
 app.use("/api", require("./routes/contact.routes"));
+
 
 app.set("etag", "strong");
 

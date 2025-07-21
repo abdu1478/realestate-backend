@@ -5,9 +5,13 @@ const { Property, User } = require("../models/model");
 dotenv.config();
 
 exports.addFavourite = async (req, res, next) => {
+      console.log("Request body:", req.body);
+
   try {
     const { userId } = req.params;
     const { propertyId } = req.body;
+
+    console.log(userId, propertyId)
 
     const cacheKey = `user:${userId}:favourites`;
     const cached = await redis.get(cacheKey);
@@ -63,8 +67,6 @@ exports.removeFavourite = async (req, res, next) => {
     try {
       const { userId, propertyId } = req.params;
       const cacheKey = `user:${userId}:favourites`;
-
-      console.log("Request body:", req.body);
 
       if (req.user.id.toString() !== userId) {
         return res

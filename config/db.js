@@ -1,8 +1,14 @@
 const mongoose = require('mongoose');
 
+const dotenv = require("dotenv");
+
+dotenv.config()
+const mongodbURI = process.env.MONGODB_URI;
+
+
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI, {
+    await mongoose.connect(mongodbURI, {
       maxPoolSize: 10,
       socketTimeoutMS: 45000,
       connectTimeoutMS: 30000,
@@ -11,7 +17,7 @@ const connectDB = async () => {
     console.log('MongoDB Connected');
   } catch (err) {
     console.error('MongoDB Connection Error:', err.message);
-    process.exit(1); // Exit on failure
+    process.exit(1); 
   }
 };
 
