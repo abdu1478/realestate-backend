@@ -1,5 +1,4 @@
 const express = require("express");
-const mongoose = require("mongoose");
 const cors = require("cors"); 
 const path = require("path");
 const compression = require("compression");
@@ -52,10 +51,10 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const [sec, nano] = process.hrtime(start);
     const ms = (sec * 1000 + nano / 1e6).toFixed(2);
-    // console.log(`${req.method} ${req.originalUrl} - ${ms}ms`);
   });
   next();
 });
+
 
 
 // === API Routes ===
