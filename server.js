@@ -14,28 +14,35 @@ connectDB()
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const FRONTEND_URL = process.env.FRONTEND_URL ;
+const FRONTEND_URL = process.env.FRONTEND_URL;
 
-// === Middleware ===
+// === Normalize and configure allowed origins ===
+const normalizeUrl = url => url ? url.replace(/\/$/, '') : url; // Remove trailing slashes
+
 const allowedOrigins = [
   FRONTEND_URL,
-];
+  'https://nova-properties-rho.vercel.app', // Add the missing origin
+  'http://localhost:3000' // Keep local development
+].map(normalizeUrl).filter(Boolean); // Remove empty values
 
+console.log("Allowed CORS origins:", allowedOrigins);
+
+// === Middleware ===
 app.use(cors({    
   origin: function (origin, callback) {
-    console.log("Incoming request origin:", origin); 
-
-    if (!origin) return callback(null, true); 
-    if (allowedOrigins.includes(origin)) {
+    console.log("Incoming request origin:", origin);
+    
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(normalizeUrl(origin))) {
       return callback(null, true);
     } else {
-      console.warn("Blocked by CORS:", origin); 
+      console.warn("Blocked by CORS:", origin);
       return callback(new Error("CORS policy does not allow this origin"));
     }
   },
   credentials: true,
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
 app.use(cookieParser());
