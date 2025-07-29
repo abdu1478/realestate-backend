@@ -63,47 +63,49 @@ app.use(limiter);
 // Serve static image assets with long-term caching
 const staticOptions = {
   maxAge: "30d",
-  setHeaders: (res) => {
+  setHeaders: (res, path) => {
     res.set("Cache-Control", "public, max-age=2592000");
+    res.set("Access-Control-Allow-Origin", process.env.FRONTEND_URL);
+    res.set("Access-Control-Allow-Credentials", "true");
   },
 };
-// app.use("/images", (req, res, next) => {
-//   res.header("Access-Control-Allow-Origin", FRONTEND_URL);
-//   res.header("Access-Control-Allow-Credentials", "true");
+
+// Serve property images
+app.use(
+  "/images",
+  express.static(path.join(__dirname, "public/images"), staticOptions)
+);
+
+// Serve agent images
+app.use(
+  "/images/agents",
+  express.static(path.join(__dirname, "public/images/agents"), staticOptions)
+);
+// const allowedImageOrigins = [
+//   process.env.FRONTEND_URL,
+//   "https://nova-properties-rho.vercel.app",
+// ];
+
+// const imageCorsMiddleware = (req, res, next) => {
+//   const origin = req.headers.origin || process.env.FRONTEND_URL;
+
+//   console.log(origin)
+
+//   if (origin && allowedImageOrigins.includes(origin)) {
+//     res.setHeader("Access-Control-Allow-Origin", origin);
+//     res.setHeader("Access-Control-Allow-Credentials", "true");
+//     res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+//     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+//   }
+
+//   if (req.method === "OPTIONS") {
+//     return res.sendStatus(204);
+//   }
+
 //   next();
-// }, express.static(path.join(__dirname, "public/images"), staticOptions));
+// };
 
-// app.use("/images/agents", (req, res, next) => {
-//   res.header("Access-Control-Allow-Origin", FRONTEND_URL);
-//   res.header("Access-Control-Allow-Credentials", "true");
-//   next();
-// }, express.static(path.join(__dirname, "public/images/agents"), staticOptions));
-
-const allowedImageOrigins = [
-  process.env.FRONTEND_URL,
-  "https://nova-properties-rho.vercel.app",
-];
-
-const imageCorsMiddleware = (req, res, next) => {
-  const origin = req.headers.origin || process.env.FRONTEND_URL;
-
-  console.log(origin)
-
-  if (origin && allowedImageOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  }
-
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-
-  next();
-};
-
-app.use("/images", imageCorsMiddleware, express.static(path.join(__dirname, "public/images"), staticOptions));
+// app.use("/images", imageCorsMiddleware, express.static(path.join(__dirname, "public/images"), staticOptions));
 
 
 // Log response times in development mode
