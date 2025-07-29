@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const { User } = require("../models/model");
 const path = require("path");
 
-const ACCESS_TOKEN_EXPIRES_IN = "15m";
+const ACCESS_TOKEN_EXPIRES_IN = "3d";
 const REFRESH_TOKEN_EXPIRES_IN = "7d";
 const COOKIE_OPTIONS = {
   httpOnly: true,
