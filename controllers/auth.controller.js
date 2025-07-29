@@ -1,10 +1,10 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { User } = require("../models/model");
-const path = require("path");
 
-const ACCESS_TOKEN_EXPIRES_IN = "3d";
+const ACCESS_TOKEN_EXPIRES_IN = "15m";
 const REFRESH_TOKEN_EXPIRES_IN = "7d";
+
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
@@ -12,23 +12,23 @@ const COOKIE_OPTIONS = {
   path: "/",
 };
 
-const signAccessToken = (user) => {
-  return jwt.sign(
-    { id: user._id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: ACCESS_TOKEN_EXPIRES_IN }
-  );
-};
+const signAccessToken = (user) =>
+  jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+    expiresIn: ACCESS_TOKEN_EXPIRES_IN,
+  });
 
-const signRefreshToken = (user) => {
-  return jwt.sign(
-    { id: user._id, role: user.role, passwordUpdatedAt: user.passwordUpdatedAt },
+const signRefreshToken = (user) =>
+  jwt.sign(
+    {
+      id: user._id,
+      role: user.role,
+      passwordUpdatedAt: user.passwordUpdatedAt?.getTime() || Date.now(),
+    },
     process.env.JWT_REFRESH_SECRET,
     { expiresIn: REFRESH_TOKEN_EXPIRES_IN }
   );
-};
 
-// ===== AUTH CONTROLLERS =====
+// REGISTER
 exports.register = async (req, res) => {
   const { name, email, password } = req.body;
 
@@ -42,87 +42,79 @@ exports.register = async (req, res) => {
 
     res.status(201).json({ message: "Registered successfully" });
   } catch (err) {
-    console.error("Register error:", err);
-    res.status(500).json({ message: "Something went wrong" });
+    console.error("Register error:", err.message);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
+// LOGIN
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
-
   try {
     const user = await User.findOne({ email }).select("+password");
+
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
-
-    console.log(`User with ${email} attempting to login`)
 
     const accessToken = signAccessToken(user);
     const refreshToken = signRefreshToken(user);
 
     res.cookie("access_token", accessToken, {
       ...COOKIE_OPTIONS,
-      maxAge: 3 * 24 * 60 * 60 * 1000, 
+      maxAge: 15 * 60 * 1000,
     });
 
     res.cookie("refresh_token", refreshToken, {
       ...COOKIE_OPTIONS,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-
-    console.log(`User with ${email} logged in successfully`)
-
 
     res.status(200).json({ message: "Login successful" });
   } catch (err) {
-    console.error("Login error:", err);
+    console.error("Login error:", err.message);
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
+// REFRESH TOKEN
 exports.refreshToken = async (req, res) => {
   const token = req.cookies.refresh_token;
 
   if (!token) {
-    return res.status(401).json({ message: "Refresh token missing", code: "NO_TOKEN" });
+    return res.status(401).json({ message: "Refresh token missing" });
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
-
     const user = await User.findById(decoded.id).select("role passwordUpdatedAt");
+
     if (!user) {
-      return res.status(401).json({ message: "User no longer exists", code: "INVALID_USER" });
+      return res.status(401).json({ message: "User not found" });
     }
 
-    if (decoded.passwordUpdatedAt && decoded.passwordUpdatedAt < user.passwordUpdatedAt.getTime()) {
-      return res.status(401).json({ message: "Password recently changed", code: "PASSWORD_CHANGED" });
+    const tokenIssueTime = decoded.passwordUpdatedAt || 0;
+    const latestChange = user.passwordUpdatedAt?.getTime() || 0;
+
+    if (tokenIssueTime < latestChange) {
+      return res.status(401).json({ message: "Password recently changed" });
     }
 
     const newAccessToken = signAccessToken(user);
-
     res.cookie("access_token", newAccessToken, {
       ...COOKIE_OPTIONS,
-      maxAge: 15 * 60 * 1000, // 15 minutes
+      maxAge: 15 * 60 * 1000,
     });
 
-    return res.status(200).json({ message: "Access token refreshed" });
+    res.status(200).json({ message: "Access token refreshed" });
   } catch (err) {
-    if (err instanceof jwt.TokenExpiredError) {
-      return res.status(401).json({ message: "Refresh token expired", code: "TOKEN_EXPIRED" });
-    }
-
-    if (err instanceof jwt.JsonWebTokenError) {
-      return res.status(401).json({ message: "Invalid token", code: "INVALID_TOKEN" });
-    }
-
-    console.error("Refresh token error:", err);
-    return res.status(500).json({ message: "Token refresh failed", code: "SERVER_ERROR" });
+    console.error("Refresh token error:", err.message);
+    return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
 
+// GET CURRENT USER
 exports.getMe = async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
@@ -132,14 +124,14 @@ exports.getMe = async (req, res) => {
 
     res.json(user);
   } catch (err) {
-    console.error("GetMe error:", err);
-    res.status(500).json({ message: "Something went wrong" });
+    console.error("GetMe error:", err.message);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
+// LOGOUT
 exports.logout = (req, res) => {
   res.clearCookie("access_token", COOKIE_OPTIONS);
   res.clearCookie("refresh_token", COOKIE_OPTIONS);
-
   res.status(200).json({ message: "Logout successful" });
 };
