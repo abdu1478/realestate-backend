@@ -50,11 +50,14 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
+
   try {
     const user = await User.findOne({ email }).select("+password");
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
+
+    console.log(`User with ${email} attempting to login`)
 
     const accessToken = signAccessToken(user);
     const refreshToken = signRefreshToken(user);
@@ -68,6 +71,9 @@ exports.login = async (req, res) => {
       ...COOKIE_OPTIONS,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
+
+    console.log(`User with ${email} logged in successfully`)
+
 
     res.status(200).json({ message: "Login successful" });
   } catch (err) {
