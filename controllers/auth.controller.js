@@ -6,11 +6,12 @@ const ACCESS_TOKEN_EXPIRES_IN = "15m";
 const REFRESH_TOKEN_EXPIRES_IN = "7d";
 
 const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-  path: "/",
-};
+  httpOnly: true, 
+  secure: process.env.NODE_ENV === "production", 
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", 
+  path: "/", 
+  domain: process.env.FRONTEND_URL ? new URL(process.env.FRONTEND_URL).hostname : undefined,
+}
 
 const signAccessToken = (user) =>
   jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
@@ -54,7 +55,9 @@ exports.login = async (req, res) => {
   try {
     const user = await User.findOne({ email }).select("+password");
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    const passwordMatch = await bcrypt.compare(password, user.password);
+
+    if (!user || !passwordMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
@@ -72,7 +75,7 @@ exports.login = async (req, res) => {
     });
 
     res.status(200).json({ message: "Login successful" });
-  } catch (err) {
+    } catch (err) {
     console.error("Login error:", err.message);
     res.status(500).json({ message: "Internal server error" });
   }

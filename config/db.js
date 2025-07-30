@@ -1,16 +1,17 @@
 const mongoose = require("mongoose");
+
 const dotenv = require("dotenv");
 
-dotenv.config();
 
-const mongodbURI = process.env.MONGODB_URI || "mongodb://localhost:27017/realestate";
+dotenv.config({ path: '.env' });
+
+const mongodbURI = process.env.MONGODB_URI 
 
 if (!mongodbURI) {
   console.error("MONGODB_URI is not defined in environment variables.");
   process.exit(1);
 }
 
-// Optional: strict query mode
 mongoose.set("strictQuery", true);
 
 const connectDB = async () => {

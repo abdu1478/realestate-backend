@@ -16,7 +16,6 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
-// === Normalize and configure allowed origins ===
 const normalizeUrl = url => url ? url.replace(/\/$/, '') : url; 
 
 const allowedOrigins = [
@@ -24,12 +23,11 @@ const allowedOrigins = [
   'https://nova-properties-rho.vercel.app', 
   'http://localhost:5173' 
 ].map(normalizeUrl).filter(Boolean);
-console.log("Allowed CORS origins:", allowedOrigins);
 
-// === Middleware ===
+
+// Middleware 
 app.use(cors({    
   origin: function (origin, callback) {
-    console.log("Incoming request origin:", origin);
     
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(normalizeUrl(origin))) {
@@ -48,13 +46,13 @@ app.use(cookieParser());
 app.use(express.json());
 // app.use(compression({ level: 6, threshold: "5kb" }));
 
-// === Rate Limiting ===
+// Rate Limiting 
 app.use(rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 minutes
+  windowMs: 10 * 60 * 1000, 
   max: 2000,
 }));
 
-// === Static File Serving ===
+// Static File Serving 
 const staticOptions = {
   maxAge: "30d",
   setHeaders: (res) => {
@@ -64,7 +62,7 @@ const staticOptions = {
 app.use("/images", express.static(path.join(__dirname, "public/images"), staticOptions));
 app.use("/images/agents", express.static(path.join(__dirname, "public/images/agents"), staticOptions));
 
-// === Response Time Debug (optional logging) ===
+// Response Time Debug 
 app.use((req, res, next) => {
   const start = process.hrtime();
   res.on("finish", () => {
@@ -76,7 +74,7 @@ app.use((req, res, next) => {
 
 
 
-// === API Routes ===
+// API Routes
 app.use("/api", require("./routes/auth.routes"));
 app.use("/api", require("./routes/user.routes"));
 app.use("/api", require("./routes/property.routes"));

@@ -3,9 +3,9 @@ const { Property, Agent, Testimonial } = require("../models/model");
 
 
 // Fetch properties 
-exports.getProperties = async (req, res, next) => {
+exports.getAllProperties = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 14 } = req.query;
     const cacheKey = `properties:page=${page}&limit=${limit}`;
     const skip = (page - 1) * limit;
     const cached = await redis.get(cacheKey);
@@ -16,8 +16,8 @@ exports.getProperties = async (req, res, next) => {
         .json(JSON.parse(cached));
     }
 
-    const data = await Property.find().skip(skip).limit(Number(limit)).lean();
-    const total = await Property.countDocuments();
+    const data = await Property.find().lean();
+    const total = data.length;
 
     await redis.set(cacheKey, JSON.stringify({ data, total }), "EX", 400);
 
@@ -59,8 +59,6 @@ exports.getPropertyById = async (req, res, next) => {
   return res.status(400).json({ error: "Invalid or missing property ID" });
 }
   try {
-
-    console.log(req.params)
     
     const cacheKey = `property:${id}`;
     const cached = await redis.get(cacheKey);
