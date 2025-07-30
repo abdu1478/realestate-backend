@@ -10,7 +10,6 @@ const COOKIE_OPTIONS = {
   secure: process.env.NODE_ENV === "production", 
   sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", 
   path: "/", 
-  domain: process.env.FRONTEND_URL ? new URL(process.env.FRONTEND_URL).hostname : undefined,
 }
 
 const signAccessToken = (user) =>
