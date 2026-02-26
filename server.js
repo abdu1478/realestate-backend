@@ -11,7 +11,6 @@ const dotenv = require("dotenv");
 dotenv.config({ path: '.env' });
 
 
-
 const app = express();
 const PORT = process.env.PORT || 5000;
 const FRONTEND_URL = process.env.FRONTEND_URL;
@@ -54,13 +53,15 @@ app.use(rateLimit({
 
 // Static File Serving 
 const staticOptions = {
-  maxAge: "30d",
+    maxAge: "1y",
+  immutable: true,
   setHeaders: (res) => {
     res.set("Cache-Control", "public, max-age=2592000");
   },
 };
 app.use("/images", express.static(path.join(__dirname, "public/images"), staticOptions));
-app.use("/images/agents", express.static(path.join(__dirname, "public/images/agents"), staticOptions));
+app.use("/images/agents", 
+  express.static(path.join(__dirname, "public/images/agents"), staticOptions));
 
 // Response Time Debug 
 app.use((req, res, next) => {
@@ -71,6 +72,8 @@ app.use((req, res, next) => {
   });
   next();
 });
+
+app.use(compression({ level: 6 }));
 
 
 
@@ -84,14 +87,15 @@ app.use("/api", require("./routes/contact.routes"));
 app.set("etag", "strong");
 
 // Server Start
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
 
 const startServer = async () => {
   try {
+    app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+    
     await connectDB(); 
-
+    
   } catch (error) {
     console.error("Failed to start server:", error);
     process.exit(1);
