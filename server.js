@@ -84,13 +84,13 @@ app.use("/api", require("./routes/contact.routes"));
 app.set("etag", "strong");
 
 // Server Start
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
+
 const startServer = async () => {
   try {
-    await connectDB(); // WAIT for MongoDB connection
-
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
+    await connectDB(); 
 
   } catch (error) {
     console.error("Failed to start server:", error);
