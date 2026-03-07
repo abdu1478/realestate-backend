@@ -8,9 +8,7 @@ const helmet       = require("helmet");
 const connectDB    = require("./config/db");
 const dotenv       = require("dotenv");
 
-dotenv.config({ path: '.env' });
-
-connectDB()
+dotenv.config({ path: ".env" });
 
 const app          = express();
 const PORT         = process.env.PORT || 5000;
@@ -80,13 +78,13 @@ app.use("/api/auth/", authLimiter);
 
 // Static files 
 const staticOptions = {
-  maxAge: "30d",
-  setHeaders: (res) => {
-    res.set("Cache-Control", "public, max-age=2592000");
+  maxAge: "1y",
+  immutable: true,
+  setHeaders(res) {
+    res.set("Cache-Control", "public, max-age=2592000, immutable");
   },
 };
 app.use("/images", express.static(path.join(__dirname, "public/images"), staticOptions));
-app.use("/images/agents", express.static(path.join(__dirname, "public/images/agents"), staticOptions));
 
 // Response time logger 
 app.use((req, res, next) => {
@@ -99,20 +97,38 @@ app.use((req, res, next) => {
   next();
 });
 
-
-
 // API Routes
 app.use("/api", require("./routes/auth.routes"));
 app.use("/api", require("./routes/user.routes"));
 app.use("/api", require("./routes/property.routes"));
 app.use("/api", require("./routes/contact.routes"));
 
-
-app.set("etag", "strong");
-
-// Server Start
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+// 404 handler 
+app.use((req, res) => {
+  res.status(404).json({ error: "Route not found" });
 });
+
+app.use((err, req, res, next) => {
+  const status  = err.status ?? err.statusCode ?? 500;
+  const message = status === 500 ? "Internal server error" : err.message;
+
+  if (status === 500) {
+    console.error(`[${new Date().toISOString()}] Unhandled error:`, err);
+  }
+
+  res.status(status).json({ error: message });
+});
+
+const startServer = async () => {
+  try {
+    await connectDB();                          
+    app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+  }
+};
 
 startServer();
