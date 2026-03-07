@@ -5,6 +5,7 @@ const { User } = require("../models/model");
 const ACCESS_TOKEN_EXPIRES_IN = "15m";
 const REFRESH_TOKEN_EXPIRES_IN = "7d";
 
+
 const COOKIE_OPTIONS = {
   httpOnly: true, 
   secure: process.env.NODE_ENV === "production", 
@@ -54,9 +55,13 @@ exports.login = async (req, res) => {
   try {
     const user = await User.findOne({ email }).select("+password");
 
-    const passwordMatch = await bcrypt.compare(password, user.password);
+    // const passwordMatch = await bcrypt.compare(password, user.password);
 
-    if (!user || !passwordMatch) {
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
@@ -136,4 +141,24 @@ exports.logout = (req, res) => {
   res.clearCookie("access_token", COOKIE_OPTIONS);
   res.clearCookie("refresh_token", COOKIE_OPTIONS);
   res.status(200).json({ message: "Logout successful" });
+};
+
+// PASSWORD RESET
+
+exports.resetPasswordController = async (req, res) => {
+  const { token } = req.params;
+  const { newPassword } = req.body;
+
+  const decoded = jwt.verify(token, process.env.JWT_RESET_PASSWORD_SECRET);
+  const user = await User.findById(decoded.id).select("+password");
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+  
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  user.password = hashedPassword;
+  await user.save();
+
+  res.status(200).json({ message: "Password reset successfully" });
 };

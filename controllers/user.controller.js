@@ -1,140 +1,109 @@
-const dotenv = require("dotenv");
-const redis = require("../utils/redisClient");
+const redis    = require("../utils/redisClient");
 const { Property, User } = require("../models/model");
 const mongoose = require("mongoose");
 
-dotenv.config();
+// Helpers
 
-// Helper: Auth check
-const isAuthorized = (reqUserId, paramUserId) => reqUserId.toString() === paramUserId.toString();
-
-// Helper: Validate ObjectId
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
-// Add to favourites
+
+async function cacheGet(key) {
+  try { return await redis.get(key); }
+  catch { return null; }
+}
+async function cacheSet(key, value, ttl = 400) {
+  try { await redis.set(key, JSON.stringify(value), "EX", ttl); }
+  catch { /* non-fatal */ }
+}
+
+// Add Favourite 
 exports.addFavourite = async (req, res, next) => {
   try {
-    const { userId } = req.params;
     const { propertyId } = req.body;
 
-    // console.log("Request body:", req.body);
-
-    if (!isAuthorized(req.user.id, userId)) {
-      return res.status(403).json({ message: "Unauthorized to modify favourites" });
+    if (!propertyId) {
+      return res.status(400).json({ message: "propertyId is required" });
     }
 
     if (!isValidObjectId(propertyId)) {
       return res.status(400).json({ message: "Invalid propertyId format" });
     }
 
-    const property = await Property.findById(propertyId);
-    if (!property) {
-      return res.status(404).json({ message: "Property not found" });
-    }
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $addToSet: { favourites: propertyId } }, 
+      { new: true }
+    ).populate("favourites");        
 
-    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const alreadyFavourite = user.favourites.some(
-      (id) => id.toString() === propertyId.toString()
-    );
-
-    if (alreadyFavourite) {
-      return res.status(200).json({ message: "Already in favourites", favourites: user.favourites });
-    }
-
-    user.favourites.push(propertyId);
-    await user.save();
-
-    // 🧠 Optional: populate and return full list
-    const populatedUser = await User.findById(userId).populate("favourites");
-
-    const cacheKey = `user:${userId}:favourites`;
-    await redis.set(cacheKey, JSON.stringify(populatedUser.favourites), "EX", 400);
+    
+    await cacheSet(`user:${req.user._id}:favourites`, user.favourites);
 
     return res.status(200).json({
       message: "Property added to favourites",
-      favourites: populatedUser.favourites,
+      favourites: user.favourites,
     });
   } catch (error) {
-    console.error(error);
     next(error);
   }
 };
 
-// ✅ Remove from favourites
+// Remove Favourite 
 exports.removeFavourite = async (req, res, next) => {
   try {
-    const { userId, propertyId } = req.params;
-
-    if (!isAuthorized(req.user.id, userId)) {
-      return res.status(403).json({ message: "Unauthorized to modify favourites" });
-    }
+    const { propertyId } = req.params;
 
     if (!isValidObjectId(propertyId)) {
       return res.status(400).json({ message: "Invalid propertyId format" });
     }
+    
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $pull: { favourites: propertyId } }, 
+      { new: true }
+    ).populate("favourites");
 
-    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const initialLength = user.favourites.length;
-    user.favourites = user.favourites.filter(
-      (id) => id.toString() !== propertyId.toString()
-    );
-
-    if (user.favourites.length === initialLength) {
-      return res.status(200).json({ message: "Property was not in favourites" });
-    }
-
-    await user.save();
-
-    const populatedUser = await User.findById(userId).populate("favourites");
-
-    const cacheKey = `user:${userId}:favourites`;
-    await redis.set(cacheKey, JSON.stringify(populatedUser.favourites), "EX", 400);
+    await cacheSet(`user:${req.user._id}:favourites`, user.favourites);
 
     return res.status(200).json({
       message: "Property removed from favourites",
-      favourites: populatedUser.favourites,
+      favourites: user.favourites,
     });
   } catch (error) {
-    console.error(error);
     next(error);
   }
 };
 
-// ✅ Get all favourites
+// Get Favourites 
 exports.getFavourites = async (req, res, next) => {
   try {
-    const { userId } = req.params;
+    
+    const cacheKey = `user:${req.user._id}:favourites`;
 
-    if (!isAuthorized(req.user.id, userId)) {
-      return res.status(403).json({ message: "Unauthorized to view favourites" });
-    }
-
-    const cacheKey = `user:${userId}:favourites`;
-    const cached = await redis.get(cacheKey);
-
+    const cached = await cacheGet(cacheKey);
     if (cached) {
       return res.status(200).json(JSON.parse(cached));
     }
 
-    const user = await User.findById(userId).populate("favourites");
+    const user = await User.findById(req.user._id)
+      .populate("favourites")
+      .lean();
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    await redis.set(cacheKey, JSON.stringify(user.favourites), "EX", 400);
+    await cacheSet(cacheKey, user.favourites);
 
-    return res.status(200).json(user.favourites);
+    return res.status(200).json(user.favourites ?? []);
   } catch (error) {
-    console.error(error);
     next(error);
   }
 };

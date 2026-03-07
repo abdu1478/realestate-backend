@@ -5,7 +5,9 @@ const dotenv = require("dotenv");
 
 dotenv.config({ path: '.env' });
 
-const mongodbURI = process.env.MONGODB_URI 
+const mongodbURI = process.env.MONGODB_URI
+// "mongodb://localhost:27017/realestate" 
+
 
 if (!mongodbURI) {
   console.error("MONGODB_URI is not defined in environment variables.");

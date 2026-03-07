@@ -1,156 +1,194 @@
 const redis = require("../utils/redisClient");
 const { Property, Agent, Testimonial } = require("../models/model");
+const { isValidObjectId } = require("mongoose");
 
 
-// Fetch properties 
+async function cacheGet(key) {
+  try { return await redis.get(key); }
+  catch { return null; }
+}
+
+async function cacheSet(key, value, ttl = 300) {
+  try { await redis.set(key, JSON.stringify(value), "EX", ttl); }
+  catch {/* we will throw everthing */}
+}
+
+function parsePagination(query) {
+  const page  = Math.max(1, parseInt(query.page)  || 1);
+
+  const limit = Math.min(50, parseInt(query.limit) || 14);
+  const skip  = (page - 1) * limit;
+  return { page, limit, skip };
+}
+
+
 exports.getAllProperties = async (req, res, next) => {
   try {
-    const { page = 1, limit = 14 } = req.query;
+    const { page, limit, skip } = parsePagination(req.query);
     const cacheKey = `properties:page=${page}&limit=${limit}`;
-    const skip = (page - 1) * limit;
-    const cached = await redis.get(cacheKey);
 
+    const cached = await cacheGet(cacheKey);
     if (cached) {
       return res
         .set("Cache-Control", "public, max-age=300")
         .json(JSON.parse(cached));
     }
 
-    const data = await Property.find().lean();
-    const total = data.length;
+    const [data, total] = await Promise.all([
+      Property.find().skip(skip).limit(limit).lean(),
+      Property.countDocuments(),
+    ]);
 
-    await redis.set(cacheKey, JSON.stringify({ data, total }), "EX", 400);
+    const payload = { data, total, page, limit };
+    await cacheSet(cacheKey, payload, 300);
 
     return res
       .set("Cache-Control", "public, max-age=300")
-      .json({ data, total });
+      .json(payload);
   } catch (error) {
     next(error);
   }
 };
-
 
 
 exports.getFeaturedProperties = async (req, res, next) => {
   try {
     const cacheKey = "featuredProperties";
 
-    const cached = await redis.get(cacheKey);
+    const cached = await cacheGet(cacheKey);
     if (cached) {
-      res.set("Cache-Control", "public, max-age=300").json(JSON.parse(cached));
-      return;
+      return res
+        .set("Cache-Control", "public, max-age=300")
+        .json(JSON.parse(cached));
     }
 
-    const data = await Property.find().limit(3);
-
-    await redis.set(cacheKey, JSON.stringify(data), "EX", 400);
-
-    return res.set("Cache-Control", "public, max-age=300").json(data);
-  } catch (error) {
-    next(error);
-  }
-}
-
-// Property by Id
-exports.getPropertyById = async (req, res, next) => {
-  const { id } = req.params;
-
-   if (!id || id.length !== 24) {
-  return res.status(400).json({ error: "Invalid or missing property ID" });
-}
-  try {
     
-    const cacheKey = `property:${id}`;
-    const cached = await redis.get(cacheKey);
+    const data = await Property.find({ featured: true }).limit(3).lean();
 
-    if (cached) {
-      res
-      .status(200)
+    await cacheSet(cacheKey, data, 300);
+
+    return res
       .set("Cache-Control", "public, max-age=300")
-      .json(JSON.parse(cached));
-      return;
-    }
-    const property = await Property.findById(id);
-    if (!property) {
-      res.status(404).json({ message: "Property not found" });
-      return;
-    }
-
-    await redis.set(cacheKey, JSON.stringify(property), "EX", 400);
-    return res.status(200).set("Cache-Control", "public, max-age=300").json(property);
+      .json(data);
   } catch (error) {
     next(error);
   }
 };
 
-// Agents endpoint
+
+exports.getPropertyById = async (req, res, next) => {
+  const { id } = req.params;
+
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ error: "Invalid property ID" });
+  }
+
+  try {
+    const cacheKey = `property:${id}`;
+
+    const cached = await cacheGet(cacheKey);
+    if (cached) {
+      return res
+        .status(200)
+        .set("Cache-Control", "public, max-age=300")
+        .json(JSON.parse(cached));
+    }
+
+    const property = await Property.findById(id).lean();
+    if (!property) {
+      return res.status(404).json({ message: "Property not found" });
+    }
+
+    await cacheSet(cacheKey, property, 300);
+
+    return res
+      .status(200)
+      .set("Cache-Control", "public, max-age=300")
+      .json(property);
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
 
 exports.getAgents = async (req, res, next) => {
   try {
     const cacheKey = "agentsList";
-    const cached = await redis.get(cacheKey);
 
+    const cached = await cacheGet(cacheKey);
     if (cached) {
-      res.set("Cache-Control", "public, max-age=300").json(JSON.parse(cached));
-      return;
+      return res
+        .set("Cache-Control", "public, max-age=300")
+        .json(JSON.parse(cached));
     }
 
-    const data = await Agent.find().limit(5);
+    const data = await Agent.find().limit(5).lean();
 
-    await redis.set(cacheKey, JSON.stringify(data), "EX", 400);
-    return res.set("Cache-Control", "public, max-age=300").json(data);
+    await cacheSet(cacheKey, data, 300);
+
+    return res
+      .set("Cache-Control", "public, max-age=300")
+      .json(data);
   } catch (error) {
     next(error);
   }
 };
 
-// Agents by id
 
 exports.getAgentById = async (req, res, next) => {
+  const { id } = req.params;
+
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ error: "Invalid agent ID" });
+  }
+
   try {
-    const cacheKey = `agents:${req.params.id}`;
-    const cached = await redis.get(cacheKey);
+    const cacheKey = `agent:${id}`;
 
+    const cached = await cacheGet(cacheKey);
     if (cached) {
-      res.json(JSON.parse(cached));
-      return
+      return res
+        .set("Cache-Control", "public, max-age=300")
+        .json(JSON.parse(cached));
     }
 
-    const agent = await Agent.findById(req.params.id).select("-__v").lean();
-
+    const agent = await Agent.findById(id).select("-__v").lean();
     if (!agent) {
-      res.status(404).json({ message: "Not found" });
-      return;
+      return res.status(404).json({ message: "Agent not found" });
     }
 
-    await redis.set(cacheKey, JSON.stringify(agent), "EX", 600);
+    await cacheSet(cacheKey, agent, 600);
 
-    return res.json(agent);
+    return res
+      .set("Cache-Control", "public, max-age=300")
+      .json(agent);
   } catch (error) {
     next(error);
   }
-}
+};
 
 
-
-// Testimonials endpoint
 exports.getTestimonials = async (req, res, next) => {
   try {
     const cacheKey = "testimonialsList";
-    const cached = await redis.get(cacheKey);
 
+    const cached = await cacheGet(cacheKey);
     if (cached) {
-      res.set("Cache-Control", "public, max-age=300").json(JSON.parse(cached));
-      return;
+      return res
+        .set("Cache-Control", "public, max-age=300")
+        .json(JSON.parse(cached));
     }
-    const data = await Testimonial.find().limit(3);
 
-    await redis.set(cacheKey, JSON.stringify(data), "EX", 400);
+    const data = await Testimonial.find().limit(3).lean();
 
-    return res.set("Cache-Control", "public, max-age=300").json(data);
+    await cacheSet(cacheKey, data, 300);
+
+    return res
+      .set("Cache-Control", "public, max-age=300")
+      .json(data);
   } catch (error) {
     next(error);
   }
 };
-
-

@@ -1,11 +1,12 @@
 const express = require("express");
 const { addFavourite, removeFavourite, getFavourites } = require("../controllers/user.controller");
-const auth = require("../middleware/auth");
+const { protect} = require("../middleware/auth");
 
 const router = express.Router();
 
-router.post("/users/:userId/favourites", auth, addFavourite);
-router.delete("/users/:userId/favourites/:propertyId", auth, removeFavourite);
-router.get("/users/:userId/favourites", auth, getFavourites);
+
+router.post("/users/favourites", protect, addFavourite);
+router.delete("/users/favourites/:propertyId", protect, removeFavourite);
+router.get("/users/favourites", protect, getFavourites);
 
 module.exports = router;

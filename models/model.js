@@ -46,37 +46,21 @@ const TestimonialSchema = new Schema({
 });
 
 // User Schema
-const UserSchema = new Schema({
-  name: { type: String, required: true },
-  email: { 
-    type: String, 
-    required: true, 
-    unique: true,
-    match: [
-      /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
-      "Please add a valid email"
-    ]
-  },
-  password: { 
-    type: String, 
-    required: true,
-    minlength: 6,
-    select: false
-  },
-  role: {
+  const UserSchema = new mongoose.Schema({
+  supabaseId: {
     type: String,
-    enum: ["user", "admin"],
-    default: "user"
+    required: true,
+    unique: true,
+    index: true,      
   },
-  favourites: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Property",
-      default: [],
-    },
-  ],
-  refreshToken: { type: String, select: false }
-});
+
+  
+  email: { type: String, required: true, unique: true },
+  name:  { type: String, default: "" },
+
+  favourites: [{ type: mongoose.Schema.Types.ObjectId, ref: "Property" }],
+
+}, { timestamps: true });
 
 // User message Schema
 const UserMessageSchema = new Schema({
