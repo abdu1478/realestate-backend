@@ -13,12 +13,14 @@ dotenv.config({ path: ".env" });
 const app          = express();
 const PORT         = process.env.PORT || 5000;
 const FRONTEND_URL = process.env.FRONTEND_URL;
+const ADMIN_URL = process.env.ADMIN_URL;
 
 // URL normaliser
 const normalizeUrl = (url) => (url ? url.replace(/\/$/, "") : url);
 
 const allowedOrigins = [
   FRONTEND_URL,
+  ADMIN_URL,
   "https://nova-properties-rho.vercel.app",
   "http://localhost:5173",
 ].map(normalizeUrl).filter(Boolean);
